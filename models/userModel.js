@@ -1,19 +1,56 @@
 const pool = require('../config/db');
 
-async function findByEmail(email) {
-  const [rows] = await pool.query('SELECT * FROM users WHERE email=?', [email]);
-  return rows[0];
-}
+// Create new user
+exports.createUser = async (data) => {
+  const { username, password, full_name, email, role, branch_id } = data;
 
-async function findById(id) {
-  const [rows] = await pool.query('SELECT id, name, email, role, office_id, created_at FROM users WHERE id=?', [id]);
-  return rows[0];
-}
+  const sql = `
+    INSERT INTO users (username, password, full_name, email, role, branch_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
 
-async function create(user) {
-  const { name, email, passwordHash, role = 'office_user', office_id = null } = user;
-  const [res] = await pool.query('INSERT INTO users (name, email, password, role, office_id) VALUES (?, ?, ?, ?, ?)', [name, email, passwordHash, role, office_id]);
-  return res.insertId;
-}
+  const [result] = await pool.query(sql, [username, password, full_name, email, role, branch_id]);
+  return result;
+};
 
-module.exports = { findByEmail, create, findById };
+
+
+
+// Get all users
+// Fetch all users (Promise style)
+exports.getAllUsers = async () => {
+  const [rows] = await pool.query('SELECT * FROM users');
+  return rows;
+};
+
+// Get user by ID
+exports.getUserById = async (id) => {
+  const [rows] = await pool.query("SELECT * FROM users WHERE user_id = ?", [id]);
+  return rows;
+};
+
+// Update user by ID
+exports.updateUser = async (id, data) => {
+  const { full_name, email, role, branch_id } = data;
+
+  const sql = `
+    UPDATE users 
+    SET full_name = ?, email = ?, role = ?, branch_id = ?
+    WHERE user_id = ?
+  `;
+
+  const [result] = await pool.query(sql, [full_name, email, role, branch_id, id]);
+  return result;
+};
+
+// Delete user
+exports.deleteUser = (id, callback) => {
+  pool.query("DELETE FROM users WHERE user_id = ?", [id], callback);
+};
+
+// Authenticate user
+exports.loginUser = async (username, password) => {
+  const sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+  const [rows] = await pool.query(sql, [username, password]);
+  return rows;
+};

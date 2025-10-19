@@ -14,12 +14,12 @@ const session = require('express-session');
 
 // --- Your Local Route/Middleware Imports ---
 const logger = require('../hardware_backend/config/logger'); 
-const assignmentRoute = require('./routes/assignmentRoutes');
-const authRoutes = require('./routes/authRoutes');
-const hardwareRoutes = require('./routes/hardwareRoutes');
-const officeRoutes = require('./routes/officeRoutes');
-const repairRoutes = require('./routes/repairRoutes');
-const transferRoutes = require('./routes/transferRoutes');
+const userRoutes = require('./routes/userRoutes');            // implement userRoutes (register/login)
+const branchRoutes = require('./routes/branchRoute');            // implement userRoutes (register/login)
+const hardwarereqRoutes = require('./routes/hardwareRequestRoutes');            // implement userRoutes (register/login)
+const assignemntRoutes = require('./routes/engineerAssignmentRoutes');            // implement userRoutes (register/login)
+const hardwareengRoutes = require('./routes/hardwareEngineerRoutes');            // implement userRoutes (register/login)
+
 
 const app = express();
 
@@ -47,12 +47,13 @@ app.use(session({
 app.use(logger);
 
 // --- ROUTE REGISTRATION ---
-app.use('/api', assignmentRoute);
-app.use('/api', authRoutes);
-app.use('/hardware/api', hardwareRoutes);
-app.use('/office/api', officeRoutes);
-app.use('/repair/api', repairRoutes);
-app.use('/transfer/api', transferRoutes);
+
+
+app.use('/api/users', userRoutes);
+app.use('/api/branch', branchRoutes);
+app.use('/api/hardware-req', hardwarereqRoutes);
+app.use('/api/eng-assign', assignemntRoutes);
+app.use('/api/hardware-eng', hardwareengRoutes);
 
 
 module.exports = app;
