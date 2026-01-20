@@ -5,7 +5,7 @@ const engineerController = require('../controllers/hardwareEngineerController');
 // All engineer routes
 router.get('/engineers', engineerController.getAllEngineers);
 router.get('/engineers/:id', engineerController.getEngineerById);
-router.post('/engineers-add', engineerController.createEngineer);
+router.post('/engineers-add', engineerController.createEngineerWithUser);
 router.put('/engineers/:id', engineerController.updateEngineer);
 router.delete('/engineers/:id', engineerController.deleteEngineer);
 

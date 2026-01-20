@@ -18,15 +18,24 @@ exports.getAssignmentById = async (req, res) => {
     const assignment = await assignmentModel.getAssignmentById(id);
 
     if (assignment.length === 0) {
-      return res.status(404).json({ message: "Assignment not found" });
+      return res.status(404).json({ message: "Assignment not found", data: [] });
     }
 
-    res.status(200).json(assignment[0]);
+    // ✅ Return as array (not single object)
+    res.status(200).json({
+      message: "Assignment fetched successfully",
+      data: assignment, // always array
+    });
   } catch (err) {
     console.error("Error fetching assignment:", err);
-    res.status(500).json({ message: "Error fetching assignment", error: err.message });
+    res.status(500).json({
+      message: "Error fetching assignment",
+      error: err.message,
+      data: [],
+    });
   }
 };
+
 
 // Create assignment
 exports.createAssignment = async (req, res) => {

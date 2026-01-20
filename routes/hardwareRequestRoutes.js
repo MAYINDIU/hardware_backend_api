@@ -6,7 +6,9 @@ const hardwareRequestController = require('../controllers/hardwareRequestControl
 router.get('/hardware-requests-list', hardwareRequestController.getAllRequests);
 router.get('/hardware-requests/:id', hardwareRequestController.getRequestById);
 router.post('/hardware-requests', hardwareRequestController.createRequest);
-router.put('/hardware-requests/:id', hardwareRequestController.updateRequest);
+router.put('/hardware-requests-update/:id', hardwareRequestController.updateRequest);
 router.delete('/hardware-requests/:id', hardwareRequestController.deleteRequest);
+router.get('/total-summary', hardwareRequestController.getAllTotal);
+router.get("/dashboard-counts/:userId", hardwareRequestController.getUserDashboardCounts);
 
 module.exports = router;

@@ -8,7 +8,7 @@ const morgan = require('morgan');
 const fs = require('fs');
 const path = require('path');
 const session = require('express-session');
-
+const cors = require("cors");
 
 
 
@@ -22,6 +22,12 @@ const hardwareengRoutes = require('./routes/hardwareEngineerRoutes');           
 
 
 const app = express();
+
+app.use(cors({
+  origin: "http://localhost:5173", // your React app
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
 
 // --- MIDDLEWARE SETUP (CRITICAL FOR req.body) ---
 app.use(bodyParser.json()); 

@@ -2,16 +2,53 @@ const pool = require('../config/db');
 
 // Create new user
 exports.createUser = async (data) => {
-  const { username, password, full_name, email, role, branch_id } = data;
+  const {
+    username,
+    password,
+    full_name,
+    email,
+    department,
+    zone_code,
+    zone_name,
+    branch_code,
+    branch_anme, // keep same as DB field
+    role,
+    branch_id
+  } = data;
 
   const sql = `
-    INSERT INTO users (username, password, full_name, email, role, branch_id)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO users (
+      username,
+      password,
+      full_name,
+      email,
+      department,
+      zone_code,
+      zone_name,
+      branch_code,
+      branch_anme,
+      role,
+      branch_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
-  const [result] = await pool.query(sql, [username, password, full_name, email, role, branch_id]);
+  const [result] = await pool.query(sql, [
+    username,
+    password,
+    full_name,
+    email,
+    department,
+    zone_code,
+    zone_name,
+    branch_code,
+    branch_anme,
+    role,
+    branch_id
+  ]);
+
   return result;
 };
+
 
 
 
@@ -50,7 +87,33 @@ exports.deleteUser = (id, callback) => {
 
 // Authenticate user
 exports.loginUser = async (username, password) => {
-  const sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+  const sql = `
+    SELECT 
+      u.user_id,
+      u.username,
+      u.password,
+      u.zone_name,
+      u.branch_anme,
+      u.department,
+      u.zone_code,
+      u.branch_code,
+      u.full_name,
+      u.email AS user_email,
+      u.role,
+      u.created_at,
+      he.engineer_id,
+      he.name AS engineer_name,
+      he.contact_number,
+      he.email AS engineer_email,
+      he.designation,
+      he.availability
+    FROM users u
+    LEFT JOIN hardware_engineer he 
+      ON u.user_id = he.user_id
+    WHERE u.username = ? AND u.password = ?
+    ORDER BY he.designation ASC
+  `;
+
   const [rows] = await pool.query(sql, [username, password]);
   return rows;
 };

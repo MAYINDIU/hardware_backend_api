@@ -29,13 +29,23 @@ exports.getEngineerById = async (req, res) => {
 };
 
 // Create engineer
-exports.createEngineer = async (req, res) => {
+// exports.createEngineer = async (req, res) => {
+//   try {
+//     const result = await engineerModel.createEngineer(req.body);
+//     res.status(201).json({ message: "Engineer created successfully", engineer_id: result.insertId });
+//   } catch (err) {
+//     console.error("Error creating engineer:", err);
+//     res.status(500).json({ message: "Error creating engineer", error: err.message });
+//   }
+// };
+
+exports.createEngineerWithUser = async (req, res) => {
   try {
-    const result = await engineerModel.createEngineer(req.body);
-    res.status(201).json({ message: "Engineer created successfully", engineer_id: result.insertId });
-  } catch (err) {
-    console.error("Error creating engineer:", err);
-    res.status(500).json({ message: "Error creating engineer", error: err.message });
+    const result = await engineerModel.createEngineerWithUser(req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    console.error("Error creating engineer:", error);
+    res.status(500).json({ message: "Failed to create engineer and user" });
   }
 };
 

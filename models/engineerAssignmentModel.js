@@ -32,7 +32,7 @@ exports.getAssignmentById = async (id) => {
     LEFT JOIN branch_office b ON hr.branch_id = b.branch_id
     LEFT JOIN hardware_engineer he ON ea.engineer_id = he.engineer_id
     LEFT JOIN users u ON ea.assigned_by = u.user_id
-    WHERE ea.assignment_id = ?
+    WHERE ea.engineer_id = ?
   `;
   const [rows] = await pool.query(sql, [id]);
   return rows;
