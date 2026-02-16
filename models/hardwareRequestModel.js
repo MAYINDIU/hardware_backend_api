@@ -123,7 +123,7 @@ exports.createRequest = async (data) => {
 
 
 
-// Update hardware request
+// Update status hardware request
 exports.updateRequest = async (id, data) => {
   const { status } = data;
 
@@ -135,6 +135,24 @@ exports.updateRequest = async (id, data) => {
   const [result] = await pool.query(sql, [ status, id]);
   return result;
 };
+
+
+
+// Update engineer comments
+exports.updateEngineerComments = async (id, data) => {
+  const { eng_comments } = data;
+
+  const sql = `
+    UPDATE hardware_request 
+    SET  eng_comments = ?
+    WHERE request_id = ?
+  `;
+  const [result] = await pool.query(sql, [ eng_comments, id]);
+  return result;
+};
+
+
+
 
 // Delete hardware request
 exports.deleteRequest = async (id) => {
@@ -201,19 +219,28 @@ exports.getUserStatusCounts = async (userId) => {
     WHERE status="Pending" AND created_by = ?
   `;
 
+    const acceptedSql = `
+    SELECT COUNT(*) AS total_accepted
+    FROM hardware_request 
+    WHERE status="Accepted" AND created_by = ?
+  `;
+
   // Execute all queries concurrently
-  const [inprogressResult, completedResult, assignedResult, pendingResult] = await Promise.all([
+  const [inprogressResult, completedResult, assignedResult, pendingResult,accepetedResult] = await Promise.all([
     pool.query(inprogressSql, [userId]),
     pool.query(completedSql, [userId]),
     pool.query(assignedSql, [userId]),
-    pool.query(pendingSql, [userId])
+    pool.query(pendingSql, [userId]),
+    pool.query(acceptedSql, [userId])
   ]);
 
   return {
     total_inprogress: inprogressResult[0][0].total_inprogress,
     total_completed: completedResult[0][0].total_completed,
     total_assigned: assignedResult[0][0].total_assigned,
-    total_pending: pendingResult[0][0].total_pending  // ✅ Added Pending
+    total_pending: pendingResult[0][0].total_pending ,
+    total_accepted: accepetedResult[0][0].total_accepted 
+
   };
 };
 

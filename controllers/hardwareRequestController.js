@@ -3,6 +3,8 @@ const hardwareRequestModel = require('../models/hardwareRequestModel');
 
 
 
+
+
 // Get total Application list
 exports.getAllTotal= async (req, res) => {
   try {
@@ -96,6 +98,28 @@ exports.updateRequest = async (req, res) => {
     res.status(500).json({ message: "Error updating request", error: err.message });
   }
 };
+
+
+// Update hardware Enginner comments
+exports.updateEngineerComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await hardwareRequestModel.updateEngineerComments(id, req.body);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Hardware request not found" });
+    }
+
+    res.status(200).json({ message: "Hardware comments updated successfully" });
+  } catch (err) {
+    console.error("Error updating hardware request:", err);
+    res.status(500).json({ message: "Error updating request", error: err.message });
+  }
+};
+
+
+
+
 
 // Delete hardware request
 exports.deleteRequest = async (req, res) => {

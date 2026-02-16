@@ -11,4 +11,8 @@ router.delete('/hardware-requests/:id', hardwareRequestController.deleteRequest)
 router.get('/total-summary', hardwareRequestController.getAllTotal);
 router.get("/dashboard-counts/:userId", hardwareRequestController.getUserDashboardCounts);
 
+router.put('/engineer-comments-update/:id', hardwareRequestController.updateEngineerComment);
+
+
+
 module.exports = router;

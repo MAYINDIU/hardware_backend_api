@@ -4,7 +4,7 @@ const pool = require('../config/db');
 exports.getAllAssignments = async () => {
   const sql = `
     SELECT ea.*, 
-           hr.hardware_name, hr.problem_details, hr.status AS request_status, 
+           hr.hardware_name, hr.problem_details, hr.eng_comments, hr.status AS request_status, 
            b.branch_name,
            he.name AS engineer_name, he.contact_number AS engineer_contact,
            u.full_name AS assigned_by_name
@@ -23,7 +23,7 @@ exports.getAllAssignments = async () => {
 exports.getAssignmentById = async (id) => {
   const sql = `
     SELECT ea.*, 
-           hr.hardware_name, hr.problem_details, hr.status AS request_status, 
+           hr.hardware_name, hr.problem_details,hr.eng_comments, hr.status AS request_status, 
            b.branch_name,
            he.name AS engineer_name, he.contact_number AS engineer_contact,
            u.full_name AS assigned_by_name
