@@ -19,7 +19,7 @@ const branchRoutes = require('./routes/branchRoute');            // implement us
 const hardwarereqRoutes = require('./routes/hardwareRequestRoutes');            // implement userRoutes (register/login)
 const assignemntRoutes = require('./routes/engineerAssignmentRoutes');            // implement userRoutes (register/login)
 const hardwareengRoutes = require('./routes/hardwareEngineerRoutes');            // implement userRoutes (register/login)
-
+const problemEntry = require('./routes/ProblemEntryRoute'); 
 
 const app = express();
 
@@ -60,6 +60,6 @@ app.use('/api/branch', branchRoutes);
 app.use('/api/hardware-req', hardwarereqRoutes);
 app.use('/api/eng-assign', assignemntRoutes);
 app.use('/api/hardware-eng', hardwareengRoutes);
-
+app.use('/api/problem-entry', problemEntry);
 
 module.exports = app;
