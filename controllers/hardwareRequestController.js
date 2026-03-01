@@ -2,8 +2,35 @@ const hardwareRequestModel = require('../models/hardwareRequestModel');
 
 
 
+exports.getAdminStats = async (req, res) => {
+    try {
+        const stats = await hardwareRequestModel.getAdminDashboardCounts();
+        res.status(200).json({
+            success: true,
+            data: stats
+        });
+    } catch (error) {
+        console.error("Admin Stats Error:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+};
 
 
+
+exports.getEngineerStats = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ message: "Engineer ID is required" });
+        }
+
+        const stats = await hardwareRequestModel.getDashboardCountsByEng(id);
+        res.status(200).json(stats);
+    } catch (error) {
+        console.error("Error fetching stats:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+};
 
 // Get total Application list
 exports.getAllTotal= async (req, res) => {

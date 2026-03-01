@@ -1,23 +1,35 @@
 const dotenv = require("dotenv").config();
 const app = require("./app");
-// Rename 'connection' to 'pool' for clarity, as config/db.js exports a pool
-const pool = require("./config/db"); 
+// Destructure both the MySQL pool and the Oracle connection function
+const { pool, connectToOracle } = require("./config/db"); 
 
-// mysql database connection check (using promise-based pool pattern)
+// 1. MySQL Database Connection Check
 pool.getConnection()
     .then(conn => {
-        // If successful, the connection object is here
-        console.log("Connected to MySQL server");
-        conn.release(); // IMPORTANT: Release the connection back to the pool immediately after testing
+        console.log("✅ Connected to MySQL server");
+        conn.release(); 
     })
     .catch(err => {
-        // If the server is down or credentials are wrong, the error is caught here
-        console.error("Error connecting to MySQL:", err.message);
+        console.error("❌ Error connecting to MySQL:", err.message);
     });
 
-// server port Connection
-const port = process.env.PORT || 6002;
+// 2. Oracle Database Connection Check
+const checkOracle = async () => {
+    try {
+        const conn = await connectToOracle();
+        console.log("✅ Connected to Oracle Database (ORA1)");
+        await conn.close(); // Always close Oracle connections manually
+    } catch (err) {
+        console.error("❌ Error connecting to Oracle:", err.message);
+    }
+};
+
+checkOracle();
+
+// Server Port Connection
+// Note: You have PORT1=3002 in your .env, so let's check for that too
+const port = process.env.PORT || process.env.PORT1 || 6002;
 
 app.listen(port, () => {
-    console.log(`App is running on port http://localhost:${port}`);
+    console.log(`🚀 App is running on http://localhost:${port}`);
 });

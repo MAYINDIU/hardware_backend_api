@@ -1,4 +1,5 @@
-const pool = require('../config/db');
+const { pool } = require('../config/db'); // This extracts ONLY the MySQL pool
+
 
 // Get all hardware requests (with branch info)
 exports.getAllRequests = async () => {
@@ -195,6 +196,57 @@ exports.getDashboardCounts = async () => {
         total_assigned: assignedRows[0].total_assigned, // ⭐️ Include new count in final object ⭐️
     };
 };
+
+// models/worklistModel.js
+exports.getDashboardCountsByEng = async (id) => {
+    const sql = `
+        SELECT 
+            COUNT(*) as total_tasks,
+            SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as total_inprogress,
+            SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as total_completed,
+            SUM(CASE WHEN status = 'Assigned' THEN 1 ELSE 0 END) as total_assigned,
+            SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as total_pending
+        FROM hardware_problem_entry 
+        WHERE Eng_id = ?`;
+
+    const [rows] = await pool.query(sql, [id]);
+    
+    // Ensure we return 0s instead of nulls if no records exist
+    return {
+        total_tasks: rows[0].total_tasks || 0,
+        total_inprogress: rows[0].total_inprogress || 0,
+        total_completed: rows[0].total_completed || 0,
+        total_assigned: rows[0].total_assigned || 0,
+        total_pending: rows[0].total_pending || 0
+    };
+};
+
+
+exports.getAdminDashboardCounts = async () => {
+    const sql = `
+        SELECT 
+            COUNT(*) as total_tasks,
+            COUNT(DISTINCT Eng_id) as total_active_engineers,
+            SUM(CASE WHEN status = 'In Progress' THEN 1 ELSE 0 END) as total_inprogress,
+            SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as total_completed,
+            SUM(CASE WHEN status = 'Assigned' THEN 1 ELSE 0 END) as total_assigned,
+            SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as total_pending
+        FROM hardware_problem_entry`;
+
+    const [rows] = await pool.query(sql);
+    const res = rows[0];
+
+    return {
+        total_tasks: res.total_tasks || 0,
+        total_engineers: res.total_active_engineers || 0,
+        total_inprogress: res.total_inprogress || 0,
+        total_completed: res.total_completed || 0,
+        total_assigned: res.total_assigned || 0,
+        total_pending: res.total_pending || 0
+    };
+};
+
+
 
 
 exports.getUserStatusCounts = async (userId) => {

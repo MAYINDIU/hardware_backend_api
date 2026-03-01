@@ -1,5 +1,47 @@
 const engineerModel = require('../models/hardwareEngineerModel');
 
+
+//report 
+exports.getProblemReport = async (req, res) => {
+    try {
+        const id = req.query.engId;
+
+        if (!id) {
+            return res.status(400).json({ success: false, message: "Engineer ID is required." });
+        }
+
+        const data = await engineerModel.getEngineerProblemLogs(id);
+
+        if (data.length === 0) {
+            return res.status(404).json({
+                success: false,
+                total_items: 0,
+                message: `No data found for Engineer ID: ${id}.`
+            });
+        }
+
+        // Professional response with count
+        res.status(200).json({
+            success: true,
+            total_items: data.length, // Counts the rows returned by the query
+            engineer_id: id,
+            data: data
+        });
+
+    } catch (err) {
+        res.status(500).json({ 
+            success: false, 
+            message: "Internal Server Error", 
+            error: err.message 
+        });
+    }
+};
+
+
+
+
+
+
 // Get all engineers
 exports.getAllEngineers = async (req, res) => {
   try {

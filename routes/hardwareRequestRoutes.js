@@ -13,6 +13,7 @@ router.get("/dashboard-counts/:userId", hardwareRequestController.getUserDashboa
 
 router.put('/engineer-comments-update/:id', hardwareRequestController.updateEngineerComment);
 
-
+router.get('/engineer-stats/:id', hardwareRequestController.getEngineerStats);
+router.get('/admin/dashboard-stats', hardwareRequestController.getAdminStats);
 
 module.exports = router;

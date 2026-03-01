@@ -9,4 +9,5 @@ router.post('/engineers-add', engineerController.createEngineerWithUser);
 router.put('/engineers/:id', engineerController.updateEngineer);
 router.delete('/engineers/:id', engineerController.deleteEngineer);
 
+router.get("/hardware-work-report", engineerController.getProblemReport);
 module.exports = router;

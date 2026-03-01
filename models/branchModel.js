@@ -1,4 +1,5 @@
-const pool = require('../config/db');
+const { pool } = require('../config/db'); // This extracts ONLY the MySQL pool
+
 
 // Get all branches
 exports.getAllBranches = async () => {

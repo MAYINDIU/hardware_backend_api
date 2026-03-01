@@ -1,4 +1,31 @@
-const pool = require('../config/db');
+const { pool } = require('../config/db'); // This extracts ONLY the MySQL pool
+
+
+
+exports.getEngineerProblemLogs = async (engId) => {
+    try {
+        const sql = `
+            SELECT 
+                e.name, 
+                e.designation,
+                p.*
+            FROM hardware_problem_entry p
+            LEFT JOIN hardware_engineer e ON CAST(TRIM(p.Eng_id) AS CHAR) = CAST(TRIM(e.engineer_id) AS CHAR)
+            WHERE TRIM(p.Eng_id) = ? 
+            ORDER BY p.ENTRY_DATE DESC 
+            LIMIT 0, 25
+        `;
+
+        // Log the exact value being sent to the DB
+        console.log("Executing query for ID:", `|${engId}|`); 
+
+        const [rows] = await pool.query(sql, [engId.toString().trim()]);
+        return rows;
+    } catch (err) {
+        console.error("Database Error:", err);
+        throw err;
+    }
+};
 
 // Get all engineers
 exports.getAllEngineers = async () => {

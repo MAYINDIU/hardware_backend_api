@@ -9,6 +9,10 @@ router.get("/single-user/:id", userController.getUserById);
 router.put("/update-user/:id", userController.updateUser);
 router.delete("/:id", userController.deleteUser);
 
+
+router.get('/engineer-worklist/:id', userController.getWorklistByEngineer);
+router.put('/hardware-requests-update/:id', userController.updateRequest);
+router.put('/engineer-comments-update/:id', userController.updateEngineerComment);
 // Login route
 router.post("/login", userController.loginUser);
 

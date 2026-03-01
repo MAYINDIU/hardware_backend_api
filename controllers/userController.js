@@ -52,6 +52,66 @@ exports.getUserById = async (req, res) => {
   }
 };
 
+
+
+
+
+// Get user work list  by Engineer_ID Wise
+exports.getWorklistByEngineer = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const worklist = await userModel.getWorkslistById(id);
+
+    if (!worklist || worklist.length === 0) {
+      return res.status(404).json({ message: "No records found for this Engineer ID" });
+    }
+
+    res.status(200).json(worklist);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+// Update hardware request
+exports.updateRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await userModel.updateRequest(id, req.body);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Hardware request not found" });
+    }
+
+    res.status(200).json({ message: "Hardware request updated successfully" });
+  } catch (err) {
+    console.error("Error updating hardware request:", err);
+    res.status(500).json({ message: "Error updating request", error: err.message });
+  }
+};
+
+
+// Update hardware Enginner comments
+exports.updateEngineerComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await userModel.updateEngineerComments(id, req.body);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Hardware request not found" });
+    }
+
+    res.status(200).json({ message: "Hardware comments updated successfully" });
+  } catch (err) {
+    console.error("Error updating hardware request:", err);
+    res.status(500).json({ message: "Error updating request", error: err.message });
+  }
+};
+
+
+
+
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;

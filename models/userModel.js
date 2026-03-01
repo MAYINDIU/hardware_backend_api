@@ -1,4 +1,4 @@
-const pool = require('../config/db');
+const { pool } = require('../config/db'); // This extracts ONLY the MySQL pool
 
 // Create new user
 exports.createUser = async (data) => {
@@ -59,6 +59,51 @@ exports.getAllUsers = async () => {
   const [rows] = await pool.query('SELECT * FROM users');
   return rows;
 };
+
+
+
+
+
+// Get Works Details by Engineer ID
+exports.getWorkslistById = async (id) => {
+  const [rows] = await pool.query("SELECT * FROM hardware_problem_entry WHERE Eng_id = ?", [id]);
+  return rows;
+};
+
+
+
+// Update status hardware request
+exports.updateRequest = async (id, data) => {
+  const { status } = data;
+
+  const sql = `
+    UPDATE hardware_problem_entry 
+    SET  status = ?
+    WHERE ID = ?
+  `;
+  const [result] = await pool.query(sql, [ status, id]);
+  return result;
+};
+
+
+
+// Update engineer comments
+exports.updateEngineerComments = async (id, data) => {
+  const { eng_comments } = data;
+
+  const sql = `
+    UPDATE hardware_problem_entry 
+    SET  eng_comments = ?
+    WHERE ID = ?
+  `;
+  const [result] = await pool.query(sql, [ eng_comments, id]);
+  return result;
+};
+
+
+
+
+
 
 // Get user by ID
 exports.getUserById = async (id) => {
