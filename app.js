@@ -22,6 +22,8 @@ const hardwareengRoutes = require('./routes/hardwareEngineerRoutes');           
 const problemEntry = require('./routes/ProblemEntryRoute'); 
 const hardwareInventory = require('./routes/HardwareInventoryRoutes'); 
 
+const hardwareStock = require('./routes/HardwareStockRoute'); 
+
 const app = express();
 
 app.use(cors({
@@ -63,5 +65,9 @@ app.use('/api/eng-assign', assignemntRoutes);
 app.use('/api/hardware-eng', hardwareengRoutes);
 app.use('/api/problem-entry', problemEntry);
 app.use('/api/hardware-inventory', hardwareInventory);
+
+
+app.use('/api/stock', hardwareStock);
+
 
 module.exports = app;
