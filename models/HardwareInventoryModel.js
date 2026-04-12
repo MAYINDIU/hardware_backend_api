@@ -124,5 +124,364 @@ const getHardwareWorkAllinfo = async (filters) => {
 };
 
 
+const insertHardwareInfo = async (data) => {
+    let connection;
+    try {
+        connection = await connectToOracle();
 
-module.exports = { getRequisitionsFromDb,getHardwareWokredinfo ,getHardwareWorkAllinfo};
+        const sql = `
+            INSERT INTO com_hardware_info
+            (hardware_id, inv_no, item_code, model, material_brand_id, job_description,
+            remarks, section, b_code, z_code, project, received_name,
+            received_by, received_date, delivered_name, delivered_by, delivered_date,
+            status, requisition_no, insert_by, insert_date, hardware_date,
+            assist_by, assist_name, emp_id, serial_no, mobile_no)
+            VALUES
+            (
+                (SELECT LPAD(TO_CHAR(NVL(MAX(TO_NUMBER(hardware_id)), 0) + 1), 5, '0') FROM com_hardware_info),
+                :inv_no, :item_code, :model, :material_brand_id, :job_description,
+                :remarks, :section, :b_code, :z_code, :project, :received_name,
+                :received_by, TO_DATE(:received_date, 'YYYY-MM-DD'), 
+                :delivered_name, :delivered_by, TO_DATE(:delivered_date, 'YYYY-MM-DD'),
+                :status, :requisition_no, :insert_by, SYSDATE, 
+                TO_DATE(:hardware_date, 'YYYY-MM-DD'),
+                :assist_by, :assist_name, :emp_id, :serial_no, :mobile_no
+            )`;
+
+        // Using autoCommit: true to finalize the transaction immediately
+        const result = await connection.execute(sql, data, { autoCommit: true });
+        return result;
+    } catch (err) {
+        // Log the error for internal debugging
+        console.error("Model Error (Oracle):", err.message);
+        throw err; 
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (e) {
+                console.error("Connection Close Error:", e);
+            }
+        }
+    }
+};
+
+
+async function updateHardwareInfo(data) {
+    let connection;
+    try {
+        connection = await connectToOracle();
+        
+        const sql = `
+            UPDATE COM_HARDWARE_INFO
+            SET 
+                INV_NO = :inv_no,
+                ITEM_CODE = :item_code,
+                MODEL = :model,
+                MATERIAL_BRAND_ID = :material_brand_id,
+                JOB_DESCRIPTION = :job_description,
+                REMARKS = :remarks,
+                SECTION = :section,
+                B_CODE = :b_code,
+                Z_CODE = :z_code,
+                PROJECT = :project,
+                RECEIVED_NAME = :received_name,
+                RECEIVED_BY = :received_by,
+                RECEIVED_DATE = TO_DATE(:received_date, 'YYYY-MM-DD'),
+                DELIVERED_NAME = :delivered_name,
+                DELIVERED_BY = :delivered_by,
+                DELIVERED_DATE = TO_DATE(:delivered_date, 'YYYY-MM-DD'),
+                STATUS = :status,
+                REQUISITION_NO = :requisition_no,
+                UPDATE_BY = :update_by,
+                HARDWARE_DATE = TO_DATE(:hardware_date, 'YYYY-MM-DD'),
+                ASSIST_BY = :assist_by,
+                ASSIST_NAME = :assist_name,
+                SERIAL_NO = :serial_no,
+                MOBILE_NO = :mobile_no,
+                UPDATE_DATE = SYSDATE
+                WHERE TRIM(HARDWARE_ID) = TRIM(:hardware_id)`;
+
+        const result = await connection.execute(sql, data, { autoCommit: true });
+        return result;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) await connection.close();
+    }
+}
+
+
+const getItemsByGroup = async () => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+
+        const sql = `
+            SELECT item_code, item_desc, gr_code, gr_sub_code
+            FROM cs_items
+            WHERE gr_code = :groupCode
+            AND item_code NOT IN (:excludeCode)
+            ORDER BY item_code
+        `;
+
+        const result = await connection.execute(
+            sql, 
+            { groupCode: '06', excludeCode: '01845' }, 
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try { await connection.close(); } catch (e) { console.error(e); }
+        }
+    }
+};
+
+
+const getAllBrands = async () => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+
+        const sql = `
+            SELECT material_brand_id, brand_name
+            FROM cs_material_brand
+            ORDER BY brand_name
+        `;
+
+        const result = await connection.execute(
+            sql,
+            [], // No bind variables needed
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (e) {
+                console.error("Connection Close Error:", e);
+            }
+        }
+    }
+};
+const getModelsByItem = async (itemCode) => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+
+        const sql = `
+            SELECT MODEL_NAME
+            FROM COM_HARDWARE_ITEM_MODEL
+            WHERE ITEM_CODE = :itemCode
+            ORDER BY MODEL_NAME
+        `;
+
+        const result = await connection.execute(
+            sql,
+            { itemCode: itemCode },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (e) {
+                console.error("Connection Close Error:", e);
+            }
+        }
+    }
+};
+
+const getProblemsByItem = async (itemCode) => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+
+        const sql = `
+            SELECT PROBLEM_NAME
+            FROM COM_HARDWARE_ITEM_PROBLEM
+            WHERE ITEM_CODE = :itemCode
+            ORDER BY PROBLEM_NAME
+        `;
+
+        const result = await connection.execute(
+            sql,
+            { itemCode: itemCode },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (e) {
+                console.error("Connection Close Error:", e);
+            }
+        }
+    }
+};
+
+const getITEmployees = async () => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+
+        const sql = `
+            SELECT emp_id, emp_name, DEGN_NAME AS vc_degn, DEPT_NAME AS dept, BRANCH_NAME AS branch
+            FROM EMP_INFO
+            WHERE DEPT_NAME = :deptName
+            AND BRANCH_NAME = :branchName
+            ORDER BY emp_id
+        `;
+
+        const result = await connection.execute(
+            sql,
+            { deptName: 'IT', branchName: 'HEAD OFFICE' },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (e) {
+                console.error("Connection Close Error:", e);
+            }
+        }
+    }
+};
+
+
+
+const getAllSections = async () => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+
+        const sql = `
+            SELECT section_id, section_name, remarks
+            FROM cs_section
+            ORDER BY section_name
+        `;
+
+        const result = await connection.execute(
+            sql,
+            [], // No filters needed
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (e) {
+                console.error("Connection Close Error:", e);
+            }
+        }
+    }
+};
+
+
+
+const getBranchZoneInfo = async () => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+
+        const sql = `
+            SELECT branch_code, branch_name, zone_code, zone_name, project
+            FROM v_branch_zone_info
+            ORDER BY branch_code
+        `;
+
+        const result = await connection.execute(
+            sql,
+            [], 
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (e) {
+                console.error("Connection Close Error:", e);
+            }
+        }
+    }
+};
+
+
+const getHardwareById = async (hardwareId) => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+
+        const sql = `
+            SELECT 
+                p.hardware_id, p.inv_no, p.item_code, c.item_desc AS item_name, 
+                p.model, p.material_brand_id, m.brand_name, p.job_description, 
+                p.remarks, p.section, p.b_code, p.z_code, p.project, 
+                p.received_by, p.received_date, p.delivered_by, p.delivered_date,
+                p.received_name, p.delivered_name, p.requisition_no, p.status, 
+                b.branch_name, b.zone_name, p.assist_by, p.assist_name, 
+                p.emp_id, p.serial_no, p.mobile_no
+            FROM com_hardware_info p
+            LEFT JOIN v_branch_zone_info b ON p.b_code = b.branch_code
+            INNER JOIN cs_items c ON p.item_code = c.item_code
+            INNER JOIN cs_material_brand m ON p.material_brand_id = m.material_brand_id
+            WHERE p.hardware_id = :hardwareId
+        `;
+
+        const result = await connection.execute(
+            sql,
+            { hardwareId: hardwareId },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows[0]; // Return the single record found
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try { await connection.close(); } catch (e) { console.error(e); }
+        }
+    }
+};
+
+const getStatusList = async () => {
+    // Static list as per your requirement
+    const statusData = [
+        { status_id: 1, status_name: "Repair" },
+        { status_id: 2, status_name: "Replace" },
+        { status_id: 3, status_name: "New" }
+    ];
+    
+    return Promise.resolve(statusData);
+};
+
+module.exports = {updateHardwareInfo,getStatusList,getHardwareById,getBranchZoneInfo,getAllSections,getITEmployees,getProblemsByItem,getModelsByItem,getAllBrands,getItemsByGroup,insertHardwareInfo, getRequisitionsFromDb,getHardwareWokredinfo ,getHardwareWorkAllinfo};

@@ -10,4 +10,6 @@ router.put('/engineers/:id', engineerController.updateEngineer);
 router.delete('/engineers/:id', engineerController.deleteEngineer);
 
 router.get("/hardware-work-report", engineerController.getProblemReport);
+
+router.get("/problem-logs/all", engineerController.getAllProblemReports);
 module.exports = router;

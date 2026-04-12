@@ -27,6 +27,34 @@ exports.getEngineerProblemLogs = async (engId) => {
     }
 };
 
+
+
+
+exports.getAllEngineerProblemLogs = async () => {
+    try {
+        const sql = `
+            SELECT 
+                e.name, 
+                e.designation,
+                p.*
+            FROM hardware_problem_entry p
+            LEFT JOIN hardware_engineer e 
+                ON CAST(TRIM(p.Eng_id) AS CHAR) = CAST(TRIM(e.engineer_id) AS CHAR)
+            ORDER BY p.ENTRY_DATE DESC
+        `;
+
+        const [rows] = await pool.query(sql);
+        return rows;
+    } catch (err) {
+        console.error("Database Error:", err);
+        throw err;
+    }
+};
+
+
+
+
+
 // Get all engineers
 exports.getAllEngineers = async () => {
   const sql = `

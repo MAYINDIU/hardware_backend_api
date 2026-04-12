@@ -37,6 +37,34 @@ exports.getProblemReport = async (req, res) => {
     }
 };
 
+exports.getAllProblemReports = async (req, res) => {
+    try {
+        const data = await engineerModel.getAllEngineerProblemLogs();
+
+        if (!data || data.length === 0) {
+            return res.status(404).json({
+                success: false,
+                total_items: 0,
+                message: "No problem logs found for any engineer."
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            total_items: data.length,
+            data: data
+        });
+
+    } catch (err) {
+        console.error("Controller Error:", err);
+        res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+            error: err.message
+        });
+    }
+};
+
 
 
 
