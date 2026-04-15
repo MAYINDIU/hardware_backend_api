@@ -30,4 +30,16 @@ router.get('/status-list', hardwareInventoryController.getAllStatuses);
 router.get('/hardware-inventory-details', hardwareInventoryController.getRequisitions);
 router.get('/hardware-info', hardwareInventoryController.getHardwareInfo);
 router.get("/work-report", hardwareInventoryController.getWorkReport);
+
+router.get("/work-report", hardwareInventoryController.getWorkReport);
+router.get("/assignedlist", hardwareInventoryController.getWorkassignedList);
+
+// Route for the engineer to see their specific work
+router.get('/engineer-worklist/:engId', hardwareInventoryController.getEngineerWorklist);
+
+
+router.put('/start-work', hardwareInventoryController.startWork);
+
+router.post('/complete-task', hardwareInventoryController.completeHardwareTask);
+
 module.exports = router;

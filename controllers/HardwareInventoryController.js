@@ -1,4 +1,4 @@
-const { getRequisitionsFromDb,getHardwareWokredinfo,getHardwareWorkAllinfo,insertHardwareInfo,getItemsByGroup,
+const {finalizeTask,updateToWorking, getEngIdWiseWorklist,getHardwareAssignedAllinfo,getRequisitionsFromDb,getHardwareWokredinfo,getHardwareWorkAllinfo,insertHardwareInfo,getItemsByGroup,
     getAllBrands,getModelsByItem,getProblemsByItem,getITEmployees,getAllSections,getBranchZoneInfo,getHardwareById,getStatusList,updateHardwareInfo
  } = require('../models/HardwareInventoryModel');
 
@@ -161,7 +161,12 @@ exports.createHardwareRecord = async (req, res) => {
             assist_name:        clean(body.assist_name),
             emp_id:             clean(body.emp_id),
             serial_no:          clean(body.serial_no),
-            mobile_no:          clean(body.mobile_no)
+            mobile_no:          clean(body.mobile_no),
+
+            // --- New Fields Added Below ---
+            eng_id:             clean(body.eng_id),
+            eng_name:           clean(body.eng_name)
+
         };
 
         const result = await insertHardwareInfo(bindData);
@@ -230,7 +235,14 @@ exports.updateHardware = async (req, res) => {
             assist_by:          clean(body.assist_by),
             assist_name:        clean(body.assist_name),
             serial_no:          clean(body.serial_no),
-            mobile_no:          clean(body.mobile_no)
+            mobile_no:          clean(body.mobile_no),
+
+
+            // --- New Engineering Fields Added Here ---
+            eng_id:             clean(body.eng_id),
+            eng_name:           clean(body.eng_name),
+            work_status:        clean(body.work_status),
+            eng_comments:       clean(body.eng_comments)
         };
 
         const result = await updateHardwareInfo(bindData);
@@ -409,5 +421,150 @@ exports.getWorkReport = async (req, res) => {
             message: "Failed to fetch hardware report.",
             error: err.message 
         });
+    }
+};
+
+
+exports.getWorkassignedList = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        // Call model with sanitized filters
+        const rows = await getHardwareAssignedAllinfo({
+            startDate,
+            endDate
+        });
+
+        // Professional response structure
+        res.status(200).json({
+            success: true,
+            count: rows.length,
+            reportGeneratedAt: new Date().toISOString(),
+            data: rows
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false, 
+            message: "Failed to fetch hardware report.",
+            error: err.message 
+        });
+    }
+};
+
+
+exports.getEngineerWorklist = async (req, res) => {
+    try {
+        // Extract eng_id from URL parameters (e.g., /worklist/6977)
+        const engId = req.params.engId;
+
+        if (!engId) {
+            return res.status(400).json({ 
+                status: "Error", 
+                message: "Engineer ID is required to fetch the worklist." 
+            });
+        }
+
+        // Call the Model function we created previously
+        const worklist = await getEngIdWiseWorklist(engId);
+
+        if (!worklist || worklist.length === 0) {
+            return res.status(200).json({ 
+                status: "Success", 
+                message: "No assigned work found for this Engineer.",
+                count: 0,
+                data: [] 
+            });
+        }
+
+        res.status(200).json({
+            status: "Success",
+            count: worklist.length,
+            data: worklist
+        });
+
+    } catch (error) {
+        console.error("Controller Error (getEngineerWorklist):", error);
+        res.status(500).json({ 
+            status: "Error", 
+            message: "Failed to retrieve engineer worklist.",
+            details: error.message 
+        });
+    }
+};
+
+
+
+exports.startWork = async (req, res) => {
+    try {
+        const { hardware_id } = req.body;
+
+        // Validation
+        if (!hardware_id) {
+            return res.status(400).json({ 
+                status: "Error", 
+                message: "Hardware ID is required to update status." 
+            });
+        }
+
+        const data = {
+            hardware_id: hardware_id,
+            work_status: "WORKING" 
+        };
+
+        const result = await updateToWorking(data);
+
+        if (result.rowsAffected && result.rowsAffected > 0) {
+            return res.status(200).json({
+                status: "Success",
+                message: `Hardware #${hardware_id} marked as WORKING.`
+            });
+        } else {
+            return res.status(404).json({ 
+                status: "Error", 
+                message: "Record not found in Oracle database." 
+            });
+        }
+    } catch (error) {
+        console.error("Start Work Controller Error:", error);
+        res.status(500).json({ status: "Error", message: error.message });
+    }
+};
+
+
+exports.completeHardwareTask = async (req, res) => {
+    try {
+        const { 
+            hardware_id, 
+            assist_by, 
+            assist_name, 
+            work_status, 
+            eng_comments 
+        } = req.body;
+
+        if (!hardware_id) {
+            return res.status(400).json({ status: "Error", message: "Hardware ID is required." });
+        }
+
+        const updateData = {
+            hardware_id,
+            assist_by,
+            assist_name,
+            work_status: work_status || 'COMPLETED', // Default to COMPLETED if not sent
+            eng_comments
+        };
+
+        const result = await finalizeTask(updateData);
+
+        if (result.rowsAffected && result.rowsAffected > 0) {
+            res.status(200).json({
+                status: "Success",
+                message: `Hardware #${hardware_id} has been updated and closed.`
+            });
+        } else {
+            res.status(404).json({ status: "Error", message: "Record not found." });
+        }
+    } catch (error) {
+        console.error("Controller Error:", error);
+        res.status(500).json({ status: "Error", message: error.message });
     }
 };

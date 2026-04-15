@@ -123,6 +123,41 @@ const getHardwareWorkAllinfo = async (filters) => {
     }
 };
 
+const getHardwareAssignedAllinfo = async (filters) => {
+    let conn;
+    try {
+        conn = await connectToOracle();
+        
+        // Use your specific SQL logic
+        const sql = `
+            SELECT * FROM COM_HARDWARE_INFO 
+            WHERE (
+                (INSERT_DATE BETWEEN TO_DATE(:p_start_date, 'DD-MM-YYYY') 
+                                   AND TO_DATE(:p_end_date, 'DD-MM-YYYY'))
+                OR 
+                (:p_start_date IS NULL AND :p_end_date IS NULL)
+            )
+            ORDER BY INSERT_DATE DESC
+        `;
+
+        const result = await conn.execute(
+            sql, 
+            {
+                p_start_date: filters.startDate || null,
+                p_end_date:   filters.endDate || null
+            }, 
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        console.error("Model Error:", err);
+        throw err;
+    } finally {
+        if (conn) await conn.close();
+    }
+};
+
 
 const insertHardwareInfo = async (data) => {
     let connection;
@@ -131,11 +166,14 @@ const insertHardwareInfo = async (data) => {
 
         const sql = `
             INSERT INTO com_hardware_info
-            (hardware_id, inv_no, item_code, model, material_brand_id, job_description,
-            remarks, section, b_code, z_code, project, received_name,
-            received_by, received_date, delivered_name, delivered_by, delivered_date,
-            status, requisition_no, insert_by, insert_date, hardware_date,
-            assist_by, assist_name, emp_id, serial_no, mobile_no)
+            (
+                hardware_id, inv_no, item_code, model, material_brand_id, job_description,
+                remarks, section, b_code, z_code, project, received_name,
+                received_by, received_date, delivered_name, delivered_by, delivered_date,
+                status, requisition_no, insert_by, insert_date, hardware_date,
+                assist_by, assist_name, emp_id, serial_no, mobile_no,
+                eng_id, eng_name, work_status -- New Columns Added Here
+            )
             VALUES
             (
                 (SELECT LPAD(TO_CHAR(NVL(MAX(TO_NUMBER(hardware_id)), 0) + 1), 5, '0') FROM com_hardware_info),
@@ -145,14 +183,14 @@ const insertHardwareInfo = async (data) => {
                 :delivered_name, :delivered_by, TO_DATE(:delivered_date, 'YYYY-MM-DD'),
                 :status, :requisition_no, :insert_by, SYSDATE, 
                 TO_DATE(:hardware_date, 'YYYY-MM-DD'),
-                :assist_by, :assist_name, :emp_id, :serial_no, :mobile_no
+                :assist_by, :assist_name, :emp_id, :serial_no, :mobile_no,
+                :eng_id, :eng_name, 'ASSIGNED' -- Values for new columns
             )`;
 
-        // Using autoCommit: true to finalize the transaction immediately
+        // Ensure 'data' object contains keys: eng_id and eng_name
         const result = await connection.execute(sql, data, { autoCommit: true });
         return result;
     } catch (err) {
-        // Log the error for internal debugging
         console.error("Model Error (Oracle):", err.message);
         throw err; 
     } finally {
@@ -199,12 +237,24 @@ async function updateHardwareInfo(data) {
                 ASSIST_NAME = :assist_name,
                 SERIAL_NO = :serial_no,
                 MOBILE_NO = :mobile_no,
+                
+                -- New Columns Added Here
+                ENG_ID = :eng_id,
+                ENG_NAME = :eng_name,
+                WORK_STATUS = :work_status,
+                ENG_COMMENTS = :eng_comments,
+                
+                -- Automatically set Complete Date if work is finished
+                COMPLETE_DT = CASE WHEN :work_status = 'COMPLETED' THEN SYSDATE ELSE COMPLETE_DT END,
+                
                 UPDATE_DATE = SYSDATE
-                WHERE TRIM(HARDWARE_ID) = TRIM(:hardware_id)`;
+            WHERE TRIM(HARDWARE_ID) = TRIM(:hardware_id)`;
 
+        // Ensure your data object includes eng_id, eng_name, work_status, and eng_comments
         const result = await connection.execute(sql, data, { autoCommit: true });
         return result;
     } catch (err) {
+        console.error("Update Error:", err.message);
         throw err;
     } finally {
         if (connection) await connection.close();
@@ -449,12 +499,19 @@ const getHardwareById = async (hardwareId) => {
                 p.received_by, p.received_date, p.delivered_by, p.delivered_date,
                 p.received_name, p.delivered_name, p.requisition_no, p.status, 
                 b.branch_name, b.zone_name, p.assist_by, p.assist_name, 
-                p.emp_id, p.serial_no, p.mobile_no
+                p.emp_id, p.serial_no, p.mobile_no,
+                
+                -- New Engineering Fields Added Here
+                p.eng_id, 
+                p.eng_name, 
+                p.work_status, 
+                p.eng_comments,
+                p.complete_dt
             FROM com_hardware_info p
             LEFT JOIN v_branch_zone_info b ON p.b_code = b.branch_code
             INNER JOIN cs_items c ON p.item_code = c.item_code
             INNER JOIN cs_material_brand m ON p.material_brand_id = m.material_brand_id
-            WHERE p.hardware_id = :hardwareId
+            WHERE TRIM(p.hardware_id) = TRIM(:hardwareId)
         `;
 
         const result = await connection.execute(
@@ -465,6 +522,7 @@ const getHardwareById = async (hardwareId) => {
 
         return result.rows[0]; // Return the single record found
     } catch (err) {
+        console.error("Fetch Error (Oracle):", err.message);
         throw err;
     } finally {
         if (connection) {
@@ -484,4 +542,125 @@ const getStatusList = async () => {
     return Promise.resolve(statusData);
 };
 
-module.exports = {updateHardwareInfo,getStatusList,getHardwareById,getBranchZoneInfo,getAllSections,getITEmployees,getProblemsByItem,getModelsByItem,getAllBrands,getItemsByGroup,insertHardwareInfo, getRequisitionsFromDb,getHardwareWokredinfo ,getHardwareWorkAllinfo};
+
+
+const getEngIdWiseWorklist = async (engId) => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+
+        const sql = `
+            SELECT 
+                p.*, 
+                c.item_desc AS item_name, 
+                m.brand_name,
+                b.branch_name, 
+                b.zone_name
+            FROM COM_HARDWARE_INFO p
+            LEFT JOIN v_branch_zone_info b ON p.b_code = b.branch_code
+            LEFT JOIN cs_items c ON p.item_code = c.item_code
+            LEFT JOIN cs_material_brand m ON p.material_brand_id = m.material_brand_id
+            WHERE p.ENG_ID = :engId 
+            ORDER BY p.INSERT_DATE DESC
+        `;
+
+        const result = await connection.execute(
+            sql,
+            { engId: engId }, 
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        console.error("Full Worklist Fetch Error:", err.message);
+        throw err;
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (e) {
+                console.error("Connection Close Error:", e);
+            }
+        }
+    }
+};
+
+
+
+async function updateToWorking(data) {
+    let connection;
+    try {
+        connection = await connectToOracle();
+
+        const sql = `
+            UPDATE COM_HARDWARE_INFO 
+            SET 
+                WORK_STATUS = :work_status
+            WHERE 
+                HARDWARE_ID = :hardware_id
+        `;
+
+        const binds = {
+            work_status: data.work_status, // Value is "WORKING"
+            hardware_id: data.hardware_id
+        };
+
+        const result = await connection.execute(sql, binds, { autoCommit: true });
+        return result;
+
+    } catch (err) {
+        console.error("Model Update Error:", err);
+        throw err;
+    } finally {
+        if (connection) {
+            try {
+                await connection.close();
+            } catch (closeErr) {
+                console.error("Error closing Oracle connection:", closeErr);
+            }
+        }
+    }
+}
+
+
+async function finalizeTask(data) {
+    let connection;
+    try {
+        connection = await connectToOracle(); // Use your existing connection helper
+
+        const sql = `
+            UPDATE COM_HARDWARE_INFO 
+            SET 
+                ASSIST_BY = :assist_by,
+                ASSIST_NAME = :assist_name,
+                WORK_STATUS = :work_status,
+                ENG_COMMENTS = :eng_comments,
+                COMPLETE_DT = SYSDATE,
+                UPDATE_DATE = SYSDATE
+            WHERE 
+                HARDWARE_ID = :hardware_id
+        `;
+
+        const binds = {
+            assist_by: data.assist_by,
+            assist_name: data.assist_name,
+            work_status: data.work_status,
+            eng_comments: data.eng_comments,
+            hardware_id: data.hardware_id
+        };
+
+        const result = await connection.execute(sql, binds, { autoCommit: true });
+        return result;
+
+    } catch (err) {
+        console.error("Oracle Update Error:", err);
+        throw err;
+    } finally {
+        if (connection) {
+            try { await connection.close(); } catch (e) { console.error(e); }
+        }
+    }
+}
+
+
+module.exports = {finalizeTask,updateToWorking,getEngIdWiseWorklist,getHardwareAssignedAllinfo,updateHardwareInfo,getStatusList,getHardwareById,getBranchZoneInfo,getAllSections,getITEmployees,getProblemsByItem,getModelsByItem,getAllBrands,getItemsByGroup,insertHardwareInfo, getRequisitionsFromDb,getHardwareWokredinfo ,getHardwareWorkAllinfo};
