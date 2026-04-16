@@ -1,8 +1,68 @@
-const {finalizeTask,updateToWorking, getEngIdWiseWorklist,getHardwareAssignedAllinfo,getRequisitionsFromDb,getHardwareWokredinfo,getHardwareWorkAllinfo,insertHardwareInfo,getItemsByGroup,
-    getAllBrands,getModelsByItem,getProblemsByItem,getITEmployees,getAllSections,getBranchZoneInfo,getHardwareById,getStatusList,updateHardwareInfo
+const {updateDeliveryInfo,getCompletedHardware,getEngineerStatusCounts,finalizeTask,updateToWorking, getEngIdWiseWorklist,getHardwareAssignedAllinfo,getRequisitionsFromDb,getHardwareWokredinfo,getHardwareWorkAllinfo,insertHardwareInfo,getItemsByGroup,
+    getAllBrands,getModelsByItem,getProblemsByItem,getITEmployees,getAllSections,getBranchZoneInfo,getHardwareById,getStatusList,updateHardwareInfo,getStatusCounts
  } = require('../models/HardwareInventoryModel');
 
 
+ exports.getCompletedList = async (req, res) => {
+    try {
+        const data = await getCompletedHardware();
+        
+        res.status(200).json({
+            success: true,
+            count: data.length,
+            data: data
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch completed records",
+            error: error.message
+        });
+    }
+};
+
+ exports.getMyHardwareStats = async (req, res) => {
+    const { engId } = req.params; // Expecting ID in the URL
+
+    if (!engId) {
+        return res.status(400).json({ success: false, message: "Engineer ID is required" });
+    }
+
+    try {
+        const stats = await getEngineerStatusCounts(engId);
+        
+        res.status(200).json({
+            success: true,
+            engineerId: engId,
+            data: stats
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error retrieving personal stats",
+            error: error.message
+        });
+    }
+};
+
+exports.getHardwareStats = async (req, res) => {
+    try {
+        const stats = await getStatusCounts();
+        
+        res.status(200).json({
+            success: true,
+            data: stats,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error("Controller Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch hardware statistics",
+            error: error.message
+        });
+    }
+};
 
 exports.getAllStatuses = async (req, res) => {
     try {
@@ -566,5 +626,59 @@ exports.completeHardwareTask = async (req, res) => {
     } catch (error) {
         console.error("Controller Error:", error);
         res.status(500).json({ status: "Error", message: error.message });
+    }
+};
+
+exports.logDelivery = async (req, res) => {
+    const { 
+        hardware_id, 
+        delivered_by, 
+        delivered_name, 
+        delivered_date 
+    } = req.body;
+
+    // 1. Validate mandatory fields
+    if (!hardware_id || !delivered_by || !delivered_name) {
+        return res.status(400).json({ 
+            success: false, 
+            message: "Missing required fields: hardware_id, delivered_by, and delivered_name are mandatory." 
+        });
+    }
+
+    try {
+        // 2. Call the Model function
+        const rowsAffected = await updateDeliveryInfo({
+            hardware_id,
+            delivered_by,
+            delivered_name,
+            delivered_date // Model defaults to current date if this is null
+        });
+
+        // 3. Handle the result
+        if (rowsAffected > 0) {
+            return res.status(200).json({ 
+                success: true, 
+                message: "Delivery details logged successfully.",
+                data: {
+                    id: hardware_id,
+                    handled_by: delivered_by,
+                    timestamp: delivered_date || new Date().toISOString()
+                }
+            });
+        } else {
+            return res.status(404).json({ 
+                success: false, 
+                message: `No record found with Hardware ID: ${hardware_id}` 
+            });
+        }
+
+    } catch (error) {
+        console.error("Delivery Controller Error:", error.message);
+        
+        return res.status(500).json({ 
+            success: false, 
+            message: "An internal server error occurred while updating delivery info.",
+            error: error.message 
+        });
     }
 };

@@ -129,16 +129,19 @@ const getHardwareAssignedAllinfo = async (filters) => {
         conn = await connectToOracle();
         
         // Use your specific SQL logic
-        const sql = `
-            SELECT * FROM COM_HARDWARE_INFO 
-            WHERE (
-                (INSERT_DATE BETWEEN TO_DATE(:p_start_date, 'DD-MM-YYYY') 
-                                   AND TO_DATE(:p_end_date, 'DD-MM-YYYY'))
-                OR 
-                (:p_start_date IS NULL AND :p_end_date IS NULL)
-            )
-            ORDER BY INSERT_DATE DESC
-        `;
+    const sql = `
+    SELECT * FROM COM_HARDWARE_INFO 
+    WHERE (
+        (
+            INSERT_DATE >= TO_DATE(:p_start_date, 'DD-MM-YYYY')
+            AND 
+            INSERT_DATE < TO_DATE(:p_end_date, 'DD-MM-YYYY') + 1
+        )
+        OR 
+        (:p_start_date IS NULL AND :p_end_date IS NULL)
+    )
+    ORDER BY INSERT_DATE DESC
+`;
 
         const result = await conn.execute(
             sql, 
@@ -663,4 +666,140 @@ async function finalizeTask(data) {
 }
 
 
-module.exports = {finalizeTask,updateToWorking,getEngIdWiseWorklist,getHardwareAssignedAllinfo,updateHardwareInfo,getStatusList,getHardwareById,getBranchZoneInfo,getAllSections,getITEmployees,getProblemsByItem,getModelsByItem,getAllBrands,getItemsByGroup,insertHardwareInfo, getRequisitionsFromDb,getHardwareWokredinfo ,getHardwareWorkAllinfo};
+const getStatusCounts = async () => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+        
+        const sql = `
+            SELECT WORK_STATUS, COUNT(*) AS TOTAL_COUNT
+            FROM COM_HARDWARE_INFO
+            WHERE WORK_STATUS IN ('ASSIGNED', 'WORKING', 'COMPLETED')
+            GROUP BY WORK_STATUS
+        `;
+
+        const result = await connection.execute(
+            sql,
+            [], 
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        // Transform array into a simple object: { ASSIGNED: 10, WORKING: 5, COMPLETED: 20 }
+        const initialCounts = { ASSIGNED: 0, WORKING: 0, COMPLETED: 0 };
+        const formattedData = result.rows.reduce((acc, row) => {
+            acc[row.WORK_STATUS] = row.TOTAL_COUNT;
+            return acc;
+        }, initialCounts);
+
+        return formattedData;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try { await connection.close(); } catch (e) { console.error(e); }
+        }
+    }
+};
+
+
+const getEngineerStatusCounts = async (engId) => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+        
+        const sql = `
+            SELECT WORK_STATUS, COUNT(*) AS TOTAL_COUNT
+            FROM COM_HARDWARE_INFO
+            WHERE WORK_STATUS IN ('ASSIGNED', 'WORKING', 'COMPLETED')
+              AND ENG_ID = :engId
+            GROUP BY WORK_STATUS
+        `;
+
+        const result = await connection.execute(
+            sql,
+            { engId: engId }, // Bind the engineer ID
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        // Ensure all keys exist even if count is 0
+        const counts = { ASSIGNED: 0, WORKING: 0, COMPLETED: 0 };
+        result.rows.forEach(row => {
+            counts[row.WORK_STATUS] = row.TOTAL_COUNT;
+        });
+
+        return counts;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try { await connection.close(); } catch (e) { console.error(e); }
+        }
+    }
+};
+
+const getCompletedHardware = async () => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+        
+        // The exact SQL you requested
+        const sql = `SELECT * FROM COM_HARDWARE_INFO 
+            WHERE WORK_STATUS IN ('COMPLETED', 'DESPATCH')
+            ORDER BY UPDATE_DATE DESC`;
+
+        const result = await connection.execute(
+            sql,
+            [], // No parameters/binds as requested
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try { await connection.close(); } catch (e) { console.error(e); }
+        }
+    }
+};
+
+
+const updateDeliveryInfo = async (data) => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+
+        const sql = `
+            UPDATE COM_HARDWARE_INFO 
+            SET 
+                DELIVERED_BY   = :delivered_by,
+                DELIVERED_NAME = :delivered_name,
+                DELIVERED_DATE = :delivered_date,
+                WORK_STATUS    = 'DESPATCH',
+                UPDATE_DATE    = SYSDATE
+            WHERE 
+                HARDWARE_ID = :hardware_id
+        `;
+
+        const binds = {
+            delivered_by:   data.delivered_by,   // The ID/Username of the deliverer
+            delivered_name: data.delivered_name, // The full name of the deliverer
+            // Uses provided date or current date if empty
+            delivered_date: data.delivered_date ? new Date(data.delivered_date) : new Date(),
+            hardware_id:    data.hardware_id
+        };
+
+        const result = await connection.execute(sql, binds, { autoCommit: true });
+        
+        return result.rowsAffected;
+    } catch (err) {
+        console.error("Oracle Delivery Update Error:", err.message);
+        throw err;
+    } finally {
+        if (connection) {
+            try { await connection.close(); } catch (e) { console.error(e); }
+        }
+    }
+};
+
+module.exports = {updateDeliveryInfo,getCompletedHardware,getEngineerStatusCounts,getStatusCounts,finalizeTask,updateToWorking,getEngIdWiseWorklist,getHardwareAssignedAllinfo,updateHardwareInfo,getStatusList,getHardwareById,getBranchZoneInfo,getAllSections,getITEmployees,getProblemsByItem,getModelsByItem,getAllBrands,getItemsByGroup,insertHardwareInfo, getRequisitionsFromDb,getHardwareWokredinfo ,getHardwareWorkAllinfo};

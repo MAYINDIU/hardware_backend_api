@@ -41,5 +41,9 @@ router.get('/engineer-worklist/:engId', hardwareInventoryController.getEngineerW
 router.put('/start-work', hardwareInventoryController.startWork);
 
 router.post('/complete-task', hardwareInventoryController.completeHardwareTask);
+router.get('/status-counts', hardwareInventoryController.getHardwareStats);
+router.get('/status-counts/:engId', hardwareInventoryController.getMyHardwareStats);
+router.get('/completed-list', hardwareInventoryController.getCompletedList);
+router.put('/update-delivery-info', hardwareInventoryController.logDelivery);
 
 module.exports = router;
