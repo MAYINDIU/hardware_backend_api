@@ -1,23 +1,48 @@
-const {updateDeliveryInfo,getCompletedHardware,getEngineerStatusCounts,finalizeTask,updateToWorking, getEngIdWiseWorklist,getHardwareAssignedAllinfo,getRequisitionsFromDb,getHardwareWokredinfo,getHardwareWorkAllinfo,insertHardwareInfo,getItemsByGroup,
+const {getHardwareByEngineer,deleteHardwareById,updateDeliveryInfo,getCompletedHardware,getEngineerStatusCounts,finalizeTask,updateToWorking, getEngIdWiseWorklist,getHardwareAssignedAllinfo,getRequisitionsFromDb,getHardwareWokredinfo,getHardwareWorkAllinfo,insertHardwareInfo,getItemsByGroup,
     getAllBrands,getModelsByItem,getProblemsByItem,getITEmployees,getAllSections,getBranchZoneInfo,getHardwareById,getStatusList,updateHardwareInfo,getStatusCounts
  } = require('../models/HardwareInventoryModel');
 
 
- exports.getCompletedList = async (req, res) => {
+
+ exports.getEngineerWork = async (req, res) => {
     try {
-        const data = await getCompletedHardware();
+        const { engId } = req.params; // Expecting /api/hardware/engineer/6669
+
+        if (!engId) {
+            return res.status(400).json({ error: "Engineer ID is required" });
+        }
+
+        const data = await getHardwareByEngineer(engId);
         
         res.status(200).json({
             success: true,
             count: data.length,
             data: data
         });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Failed to fetch completed records",
-            error: error.message
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+
+ exports.getCompletedList = async (req, res) => {
+    try {
+        // Extract dates from query parameters: /api/hardware?start=2024-01-01&end=2024-01-31
+        const { start, end } = req.query;
+
+        if (!start || !end) {
+            return res.status(400).json({ error: "Please provide both start and end dates." });
+        }
+
+        const data = await getCompletedHardware(start, end);
+        
+        res.status(200).json({
+            success: true,
+            count: data.length,
+            data: data
         });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
 };
 
@@ -680,5 +705,32 @@ exports.logDelivery = async (req, res) => {
             message: "An internal server error occurred while updating delivery info.",
             error: error.message 
         });
+    }
+};
+
+
+exports.deleteHardware = async (req, res) => {
+    try {
+        const { id } = req.params; // Grabs the ID from the URL path
+
+        if (!id) {
+            return res.status(400).json({ error: "Hardware ID is required." });
+        }
+
+        const rowsDeleted = await deleteHardwareById(id);
+        
+        if (rowsDeleted === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: `No hardware found with ID: ${id}` 
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Hardware ${id} deleted successfully.`
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
 };

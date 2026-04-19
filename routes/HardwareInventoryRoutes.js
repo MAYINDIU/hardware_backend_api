@@ -45,5 +45,9 @@ router.get('/status-counts', hardwareInventoryController.getHardwareStats);
 router.get('/status-counts/:engId', hardwareInventoryController.getMyHardwareStats);
 router.get('/completed-list', hardwareInventoryController.getCompletedList);
 router.put('/update-delivery-info', hardwareInventoryController.logDelivery);
+// DELETE /api/hardware/02029
+router.delete('/delete-hardware/:id', hardwareInventoryController.deleteHardware);
+
+router.get('/engineer/:engId', hardwareInventoryController.getEngineerWork);
 
 module.exports = router;

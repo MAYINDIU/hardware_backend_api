@@ -737,19 +737,25 @@ const getEngineerStatusCounts = async (engId) => {
     }
 };
 
-const getCompletedHardware = async () => {
+
+
+
+const getCompletedHardware = async (startDate, endDate) => {
     let connection;
     try {
         connection = await connectToOracle();
         
-        // The exact SQL you requested
-        const sql = `SELECT * FROM COM_HARDWARE_INFO 
-            WHERE WORK_STATUS IN ('COMPLETED', 'DESPATCH')
-            ORDER BY UPDATE_DATE DESC`;
+       const sql = `
+    SELECT * FROM COM_HARDWARE_INFO 
+    WHERE WORK_STATUS IN ('COMPLETED', 'DESPATCH')
+      /* TRUNC removes the time from the DB column for a clean date match */
+      AND TRUNC(COMPLETE_DT) BETWEEN TO_DATE(:startdt, 'YYYY-MM-DD') 
+                                 AND TO_DATE(:enddt, 'YYYY-MM-DD')
+    ORDER BY UPDATE_DATE DESC`;
 
         const result = await connection.execute(
             sql,
-            [], // No parameters/binds as requested
+            { startdt: startDate, enddt: endDate },
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
@@ -802,4 +808,56 @@ const updateDeliveryInfo = async (data) => {
     }
 };
 
-module.exports = {updateDeliveryInfo,getCompletedHardware,getEngineerStatusCounts,getStatusCounts,finalizeTask,updateToWorking,getEngIdWiseWorklist,getHardwareAssignedAllinfo,updateHardwareInfo,getStatusList,getHardwareById,getBranchZoneInfo,getAllSections,getITEmployees,getProblemsByItem,getModelsByItem,getAllBrands,getItemsByGroup,insertHardwareInfo, getRequisitionsFromDb,getHardwareWokredinfo ,getHardwareWorkAllinfo};
+
+const deleteHardwareById = async (hardwareId) => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+        
+        const sql = `DELETE FROM COM_HARDWARE_INFO WHERE HARDWARE_ID = :id`;
+
+        const result = await connection.execute(
+            sql,
+            { id: hardwareId },
+            { autoCommit: true } // Crucial for DELETE/UPDATE/INSERT
+        );
+
+        return result.rowsAffected; // Returns 1 if deleted, 0 if not found
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try { await connection.close(); } catch (e) { console.error(e); }
+        }
+    }
+};
+
+
+const getHardwareByEngineer = async (engId) => {
+    let connection;
+    try {
+        connection = await connectToOracle();
+        
+        const sql = `
+            SELECT * FROM COM_HARDWARE_INFO 
+            WHERE ENG_ID = :engid 
+              AND WORK_STATUS IN ('COMPLETED', 'DESPATCH')
+            ORDER BY UPDATE_DATE DESC`;
+
+        const result = await connection.execute(
+            sql,
+            { engid: engId },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (connection) {
+            try { await connection.close(); } catch (e) { console.error(e); }
+        }
+    }
+};
+
+module.exports = {getHardwareByEngineer,deleteHardwareById,updateDeliveryInfo,getCompletedHardware,getEngineerStatusCounts,getStatusCounts,finalizeTask,updateToWorking,getEngIdWiseWorklist,getHardwareAssignedAllinfo,updateHardwareInfo,getStatusList,getHardwareById,getBranchZoneInfo,getAllSections,getITEmployees,getProblemsByItem,getModelsByItem,getAllBrands,getItemsByGroup,insertHardwareInfo, getRequisitionsFromDb,getHardwareWokredinfo ,getHardwareWorkAllinfo};
