@@ -1,5 +1,5 @@
 const {getHardwareByEngineer,deleteHardwareById,updateDeliveryInfo,getCompletedHardware,getEngineerStatusCounts,finalizeTask,updateToWorking, getEngIdWiseWorklist,getHardwareAssignedAllinfo,getRequisitionsFromDb,getHardwareWokredinfo,getHardwareWorkAllinfo,insertHardwareInfo,getItemsByGroup,
-    getAllBrands,getModelsByItem,getProblemsByItem,getITEmployees,getAllSections,getBranchZoneInfo,getHardwareById,getStatusList,updateHardwareInfo,getStatusCounts
+    getAllBrands,getModelsByItem,getProblemsByItem,getITEmployees,getAllSections,getBranchZoneInfo,getHardwareById,getStatusList,updateHardwareInfo,getStatusCounts,getChallanDetailsByInvNo
  } = require('../models/HardwareInventoryModel');
 
 
@@ -453,6 +453,31 @@ exports.getRequisitions = async (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
+    }
+};
+
+
+exports.getChallanDetails = async (req, res) => {
+    try {
+        const { invNo } = req.params;
+
+        if (!invNo) {
+            return res.status(400).json({ status: "Error", message: "Invoice number is required" });
+        }
+
+        const data = await getChallanDetailsByInvNo(invNo);
+
+        if (!data || data.length === 0) {
+            return res.status(404).json({ status: "Error", message: "No challan details found for the specified invoice number" });
+        }
+
+        res.status(200).json({
+            status: "Success",
+            count: data.length,
+            data: data
+        });
+    } catch (error) {
+        res.status(500).json({ status: "Error", message: error.message });
     }
 };
 

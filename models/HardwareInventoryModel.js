@@ -49,6 +49,65 @@ const getRequisitionsFromDb = async (filters) => {
     }
 };
 
+const getChallanDetailsByInvNo = async (invNo) => {
+    let conn;
+    try {
+        conn = await connectToOracle();
+
+        const sql = `
+            SELECT C.INV_NO,
+                   C.CHALLAN_DATE,
+                   GET_CS_SUPPLIER_NAME(C.SUPPLIER_ID) COMPANY,
+                   C.REMARKS,
+                   C.TAG_NO,
+                   C.STATUS,
+                   C.ITEM_CODE,
+                   GET_CS_MATERIAL_NAME(C.ITEM_CODE) ITEM_NAME,
+                   RECEIVE_QTY,
+                   C.MONITOR_TAG_NO,
+                   C.CPU_TAG_NO,
+                   C.MODEL,
+                   R.BRANCH,
+                   (SELECT BRANCH_NAME FROM V_BRANCH_ZONE_INFO WHERE BRANCH_CODE = R.BRANCH) BRANCH_NAME,
+                   R.MOBILE_NUMBER,
+                   R.ZONE,
+                   (SELECT DISTINCT(ZONE_NAME) FROM V_BRANCH_ZONE_INFO WHERE ZONE_CODE = R.ZONE AND BRANCH_CODE = R.BRANCH) ZONE_NAME,
+                   GET_STATUS(R.BRANCH) STATUS,
+                   RD.RAISED_BY EMP_ID,
+                   FUN_EMP_NAME(RD.RAISED_BY) EMP_NAME,
+                   P.PO_DATE,
+                   P.DATE_OF_DELIVERY,
+                   P.SECTION,
+                   P.EXPIRE_DATE,
+                   P.ITEM_TYPE,
+                   P.BRAND
+            FROM COM_MATERIAL_REQUISITION R,
+                 COM_MATREQUISITION_DETAIL RD,
+                 COM_PURCHASE_MASTER P,
+                 COM_CHALLAN_MASTER C
+            WHERE R.MR_NO = RD.MPR_NO
+              AND R.MR_NO = P.MPR_NO
+              AND P.PO_NO = C.PO_NO
+              AND C.INV_NO = :P_INV_NO
+            ORDER BY C.INV_NO
+        `;
+
+        const result = await conn.execute(
+            sql,
+            { P_INV_NO: invNo },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+
+        return result.rows;
+    } catch (err) {
+        throw err;
+    } finally {
+        if (conn) {
+            await conn.close();
+        }
+    }
+};
+
 
 const getHardwareWokredinfo = async (filters) => {
     let conn;
@@ -674,7 +733,7 @@ const getStatusCounts = async () => {
         const sql = `
             SELECT WORK_STATUS, COUNT(*) AS TOTAL_COUNT
             FROM COM_HARDWARE_INFO
-            WHERE WORK_STATUS IN ('ASSIGNED', 'WORKING', 'COMPLETED')
+            WHERE WORK_STATUS IN ('ASSIGNED', 'WORKING', 'COMPLETED', 'DESPATCH')
             GROUP BY WORK_STATUS
         `;
 
@@ -684,10 +743,19 @@ const getStatusCounts = async () => {
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
         );
 
-        // Transform array into a simple object: { ASSIGNED: 10, WORKING: 5, COMPLETED: 20 }
-        const initialCounts = { ASSIGNED: 0, WORKING: 0, COMPLETED: 0 };
+        // Initialize with DESPATCH set to 0
+        const initialCounts = { 
+            ASSIGNED: 0, 
+            WORKING: 0, 
+            COMPLETED: 0, 
+            DESPATCH: 0 
+        };
+
         const formattedData = result.rows.reduce((acc, row) => {
-            acc[row.WORK_STATUS] = row.TOTAL_COUNT;
+            // Ensure we only map statuses we expect
+            if (acc.hasOwnProperty(row.WORK_STATUS)) {
+                acc[row.WORK_STATUS] = row.TOTAL_COUNT;
+            }
             return acc;
         }, initialCounts);
 
@@ -710,7 +778,7 @@ const getEngineerStatusCounts = async (engId) => {
         const sql = `
             SELECT WORK_STATUS, COUNT(*) AS TOTAL_COUNT
             FROM COM_HARDWARE_INFO
-            WHERE WORK_STATUS IN ('ASSIGNED', 'WORKING', 'COMPLETED')
+            WHERE WORK_STATUS IN ('ASSIGNED', 'WORKING', 'COMPLETED', 'DESPATCH')
               AND ENG_ID = :engId
             GROUP BY WORK_STATUS
         `;
@@ -722,9 +790,19 @@ const getEngineerStatusCounts = async (engId) => {
         );
 
         // Ensure all keys exist even if count is 0
-        const counts = { ASSIGNED: 0, WORKING: 0, COMPLETED: 0 };
+        // Added DESPATCH: 0 here
+        const counts = { 
+            ASSIGNED: 0, 
+            WORKING: 0, 
+            COMPLETED: 0, 
+            DESPATCH: 0 
+        };
+
         result.rows.forEach(row => {
-            counts[row.WORK_STATUS] = row.TOTAL_COUNT;
+            // Map the database count to our counts object
+            if (counts.hasOwnProperty(row.WORK_STATUS)) {
+                counts[row.WORK_STATUS] = row.TOTAL_COUNT;
+            }
         });
 
         return counts;
@@ -732,7 +810,11 @@ const getEngineerStatusCounts = async (engId) => {
         throw err;
     } finally {
         if (connection) {
-            try { await connection.close(); } catch (e) { console.error(e); }
+            try { 
+                await connection.close(); 
+            } catch (e) { 
+                console.error("Error closing connection:", e); 
+            }
         }
     }
 };
@@ -860,4 +942,4 @@ const getHardwareByEngineer = async (engId) => {
     }
 };
 
-module.exports = {getHardwareByEngineer,deleteHardwareById,updateDeliveryInfo,getCompletedHardware,getEngineerStatusCounts,getStatusCounts,finalizeTask,updateToWorking,getEngIdWiseWorklist,getHardwareAssignedAllinfo,updateHardwareInfo,getStatusList,getHardwareById,getBranchZoneInfo,getAllSections,getITEmployees,getProblemsByItem,getModelsByItem,getAllBrands,getItemsByGroup,insertHardwareInfo, getRequisitionsFromDb,getHardwareWokredinfo ,getHardwareWorkAllinfo};
+module.exports = {getHardwareByEngineer,deleteHardwareById,updateDeliveryInfo,getCompletedHardware,getEngineerStatusCounts,getStatusCounts,finalizeTask,updateToWorking,getEngIdWiseWorklist,getHardwareAssignedAllinfo,updateHardwareInfo,getStatusList,getHardwareById,getBranchZoneInfo,getAllSections,getITEmployees,getProblemsByItem,getModelsByItem,getAllBrands,getItemsByGroup,insertHardwareInfo, getRequisitionsFromDb,getHardwareWokredinfo ,getHardwareWorkAllinfo,getChallanDetailsByInvNo};

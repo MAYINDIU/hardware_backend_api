@@ -28,6 +28,7 @@ router.get('/hardware-details/:id', hardwareInventoryController.getDetails);
 router.get('/status-list', hardwareInventoryController.getAllStatuses);
 
 router.get('/hardware-inventory-details', hardwareInventoryController.getRequisitions);
+router.get('/challan-details/:invNo', hardwareInventoryController.getChallanDetails);
 router.get('/hardware-info', hardwareInventoryController.getHardwareInfo);
 router.get("/work-report", hardwareInventoryController.getWorkReport);
 
